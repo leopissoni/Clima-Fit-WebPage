@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ClimaFit</title>
+    <link rel="stylesheet" href="estilo.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+</head>
+<body>
+
+    <!-- LOGIN / REGISTRO -->
+    <div id="auth-screen" class="auth-container">
+        <div class="auth-card">
+            <h1><i class="fa-solid fa-cloud-sun"></i> ClimaFit</h1>
+
+            <div id="loginBox">
+                <input type="text" id="loginUser" placeholder="Usuario" autocomplete="username">
+
+                <div class="password-field">
+                    <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password">
+                    <button type="button" class="toggle-pass-btn" onclick="togglePassword('loginPass', this)" aria-label="Mostrar contraseña">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+
+                <button class="auth-btn" onclick="login()">Iniciar Sesión</button>
+                <button class="auth-btn" onclick="showRegister()">Crear Cuenta</button>
+                <button class="auth-btn" onclick="guest()">Entrar como Invitado</button>
+
+                <p class="forgot-pass-link" onclick="showRecover()">¿Olvidaste tu contraseña?</p>
+            </div>
+
+            <div id="registerBox" class="hidden">
+                <input type="text" id="registerUser" placeholder="Nuevo Usuario" autocomplete="username">
+
+                <div class="password-field">
+                    <input type="password" id="registerPass" placeholder="Nueva Contraseña" autocomplete="new-password">
+                    <button type="button" class="toggle-pass-btn" onclick="togglePassword('registerPass', this)" aria-label="Mostrar contraseña">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+
+                <button onclick="register()">Registrarse</button>
+                <button class="ghost" onclick="showLogin()">Volver al Login</button>
+            </div>
+
+            <div id="recoverBox" class="hidden">
+                <p class="recover-info">
+                    Ingresá tu usuario y elegí una nueva contraseña para tu cuenta.
+                </p>
+
+                <input type="text" id="recoverUser" placeholder="Usuario" autocomplete="username">
+
+                <div class="password-field">
+                    <input type="password" id="recoverNewPass" placeholder="Nueva Contraseña" autocomplete="new-password">
+                    <button type="button" class="toggle-pass-btn" onclick="togglePassword('recoverNewPass', this)" aria-label="Mostrar contraseña">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+
+                <div class="password-field">
+                    <input type="password" id="recoverNewPassConfirm" placeholder="Repetir Nueva Contraseña" autocomplete="new-password">
+                    <button type="button" class="toggle-pass-btn" onclick="togglePassword('recoverNewPassConfirm', this)" aria-label="Mostrar contraseña">
+                        <i class="fa-solid fa-eye"></i>
+                    </button>
+                </div>
+
+                <button class="auth-btn" onclick="recoverPassword()">Restablecer Contraseña</button>
+                <button class="ghost" onclick="showLogin()">Volver al Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- APP -->
+    <div id="app" class="hidden">
+
+        <header class="topbar">
+            <div>
+                <h2><i class="fa-solid fa-cloud-sun"></i> ClimaFit</h2>
+                <p id="welcomeUser"></p>
+            </div>
+            <div style="display:flex;align-items:center;gap:20px;">
+                <div id="clock"></div>
+                <button class="ghost" onclick="logout()">
+                    <i class="fa-solid fa-right-from-bracket"></i> Salir
+                </button>
+            </div>
+        </header>
+
+        <main class="dashboard">
+
+            <!-- CLIMA -->
+            <section class="panel clima-panel">
+                <h3><i class="fa-solid fa-cloud"></i> Consultar Clima</h3>
+
+                <div class="search">
+                    <input
+                        type="text"
+                        id="city"
+                        placeholder="Ingresar ciudad"
+                        onkeydown="if(event.key==='Enter') getWeather()"
+                    >
+                    <button onclick="getWeather()">Buscar</button>
+                </div>
+
+                <div id="weatherResult" class="weather-info"></div>
+                <div id="recommendation" class="recommendation"></div>
+            </section>
+
+            <!-- OUTFITS -->
+            <section class="panel outfit-panel">
+                <h3><i class="fa-solid fa-shirt"></i> Generador de Outfits</h3>
+
+                <div class="outfit-options">
+                    <div class="outfit-box" id="outfit1"></div>
+                    <div class="outfit-box" id="outfit2"></div>
+                    <div class="outfit-box" id="outfit3"></div>
+                </div>
+
+                <h4>Campera Recomendada</h4>
+                <p id="jacketRecommendationText" class="recommendation"></p>
+
+                <div class="outfit-options" id="jacketOptions"></div>
+
+                <h4>Maniquí Personalizado</h4>
+
+                <div class="maniqui">
+                    <p id="maniquiEmpty" class="maniqui-empty">
+                        Hacé clic en una prenda o en "Usar" para armar tu look vos mismo
+                    </p>
+
+                    <img id="manualJacket" class="maniqui-layer" alt="Campera">
+                    <img id="manualTop" class="maniqui-layer" alt="Parte superior">
+                    <img id="manualDress" class="maniqui-layer" alt="Vestido">
+                    <img id="manualBottom" class="maniqui-layer" alt="Parte inferior">
+                    <img id="manualShoes" class="maniqui-layer" alt="Calzado">
+                </div>
+
+                <button class="clear-mannequin-btn" onclick="clearManiqui()">
+                    <i class="fa-solid fa-trash"></i>
+                    Limpiar Maniquí
+                </button>
+            </section>
+
+        </main>
+
+        <!-- ARMARIO -->
+        <section class="panel armario-panel">
+
+            <h3><i class="fa-solid fa-door-open"></i> Mi Armario</h3>
+
+            <!-- SUBIR PRENDA -->
+            <div class="upload-box">
+                <select id="category">
+                    <option value="remeras">Remeras / Camisas</option>
+                    <option value="pantalones">Pantalones</option>
+                    <option value="bermudas">Bermudas / Shorts</option>
+                    <option value="camperas-livianas">Camperas Livianas</option>
+                    <option value="camperas-abrigo">Camperas de Abrigo</option>
+                    <option value="calzado">Calzado</option>
+                    <option value="vestidos">Vestidos</option>
+                    <option value="polleras">Polleras</option>
+                </select>
+
+                <input type="file" id="upload" hidden accept="image/*">
+
+                <label for="upload" class="upload-label">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Seleccionar prenda
+                </label>
+
+                <span id="fileName">Ningún archivo seleccionado</span>
+
+                <button onclick="addClothing()">
+                    <i class="fa-solid fa-plus"></i> Guardar Prenda
+                </button>
+            </div>
+
+            <!-- VISTA PREVIA ARRASTRABLE -->
+            <div id="uploadPreviewBox" class="upload-preview hidden">
+                <img id="uploadPreview" draggable="true" alt="Vista previa de la prenda">
+                <p>
+                    <i class="fa-solid fa-arrows-up-down-left-right"></i>
+                    Arrastrá esta prenda hasta su categoría en el armario
+                </p>
+            </div>
+
+            <!-- SECCIONES DEL ARMARIO -->
+            <div class="closet-sections">
+
+                <div class="closet-category">
+                    <h3>Remeras</h3>
+                    <div id="remeras" class="closet-grid"></div>
+                </div>
+
+                <div class="closet-category">
+                    <h3>Pantalones</h3>
+                    <div id="pantalones" class="closet-grid"></div>
+                </div>
+
+                <div class="closet-category">
+                    <h3>Bermudas / Shorts</h3>
+                    <div id="bermudas" class="closet-grid"></div>
+                </div>
+
+                <div class="closet-category">
+                    <h3>Camperas Livianas</h3>
+                    <div id="camperas-livianas" class="closet-grid"></div>
+                </div>
+
+                <div class="closet-category">
+                    <h3>Camperas de Abrigo</h3>
+                    <div id="camperas-abrigo" class="closet-grid"></div>
+                </div>
+
+                <div class="closet-category">
+                    <h3>Calzado</h3>
+                    <div id="calzado" class="closet-grid"></div>
+                </div>
+
+                <div class="closet-category">
+                    <h3>Vestidos</h3>
+                    <div id="vestidos" class="closet-grid"></div>
+                </div>
+
+                <div class="closet-category">
+                    <h3>Polleras</h3>
+                    <div id="polleras" class="closet-grid"></div>
+                </div>
+
+            </div>
+
+            <div class="closet-actions">
+                <button class="save-closet-btn" onclick="saveCloset()">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    Guardar Armario
+                </button>
+
+                <button class="clear-closet-btn" onclick="clearCloset()">
+                    <i class="fa-solid fa-trash"></i>
+                    Vaciar Armario
+                </button>
+            </div>
+        </section>
+
+    </div>
+
+    <script src="logica.js"></script>
+</body>
+</html>
