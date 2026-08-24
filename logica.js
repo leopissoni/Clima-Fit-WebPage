@@ -18,6 +18,14 @@ const CATEGORIAS = [
     "polleras"
 ];
 
+/* ---------- Clave de almacenamiento por usuario ---------- */
+// Cada usuario (y el invitado) tiene su propio armario aislado en localStorage,
+// en vez de compartir las mismas claves ("remeras", "pantalones", etc.) entre todos.
+
+function closetKey(category) {
+    return "closet_" + currentUser + "_" + category;
+}
+
 /* ============================================================
    LOGIN / REGISTRO
    ============================================================ */
@@ -132,6 +140,12 @@ function guest() {
 }
 
 function logout() {
+    // Al invitado no le persistimos el armario entre sesiones:
+    // se borra su armario temporal al salir.
+    if (currentUser === "Invitado") {
+        CATEGORIAS.forEach(category => localStorage.removeItem(closetKey(category)));
+    }
+
     currentUser = null;
 
     document.getElementById("app").classList.add("hidden");
@@ -152,22 +166,6 @@ function enterApp(user) {
 
     loadCloset();
     updateClock();
-    loadSavedCloset();
-}
-
-function loadSavedCloset() {
-    if (currentUser === "Invitado") return;
-
-    const saved = localStorage.getItem("closet_" + currentUser);
-    if (!saved) return;
-
-    const armario = JSON.parse(saved);
-
-    Object.keys(armario).forEach(categoria => {
-        localStorage.setItem(categoria, JSON.stringify(armario[categoria]));
-    });
-
-    loadCloset();
 }
 
 /* ============================================================
@@ -317,67 +315,36 @@ function clearManiqui() {
    ARMARIO
    ============================================================ */
 
-function addClothing() {
-    const fileInput = document.getElementById("upload");
-    const file = fileInput.files[0];
-    const category = document.getElementById("category").value;
-
-    if (!file) {
-        alert("Seleccioná una imagen primero");
-        return;
-    }
-
-    if (!file.type.startsWith("image/")) {
-        alert("Solo se aceptan archivos de imagen");
-        return;
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = function (e) {
-        const imgData = e.target.result;
-        saveClothing(category, imgData);
-        createClothingItem(category, imgData);
-        fileInput.value = "";
-        refrescarOutfitsSiHayClima();
-    };
-
-    reader.onerror = function () {
-        alert("Error al leer el archivo");
-    };
-
-    reader.readAsDataURL(file);
-}
-
 function saveClothing(category, img) {
-    const clothes = JSON.parse(localStorage.getItem(category)) || [];
+    const clothes = JSON.parse(localStorage.getItem(closetKey(category))) || [];
     clothes.push(img);
-    localStorage.setItem(category, JSON.stringify(clothes));
+    localStorage.setItem(closetKey(category), JSON.stringify(clothes));
 }
 
 function saveCloset() {
-    if (currentUser !== "Invitado") return;
+    if (currentUser === "Invitado") {
+        const continuar = confirm(
+            "Estás como invitado: tu armario no se guarda de forma permanente y se borra al salir.\n\n¿Querés crear una cuenta o iniciar sesión para guardarlo?"
+        );
+        if (!continuar) return;
 
-    const continuar = confirm("Debés iniciar sesión para guardar armarios.\n\n¿Ir al login?");
-    if (!continuar) return;
+        document.getElementById("app").classList.add("hidden");
+        document.getElementById("auth-screen").classList.remove("hidden");
+        showRegister();
+        return;
+    }
 
-    document.getElementById("app").classList.add("hidden");
-    document.getElementById("auth-screen").classList.remove("hidden");
-    showLogin();
+    alert("Tu armario ya está guardado ✅");
 }
 
 function clearCloset() {
     if (!confirm("¿Vaciar todo el armario?")) return;
 
     CATEGORIAS.forEach(category => {
-        localStorage.removeItem(category);
+        localStorage.removeItem(closetKey(category));
         const grid = document.getElementById(category);
         if (grid) grid.innerHTML = "";
     });
-
-    if (currentUser) {
-        localStorage.removeItem("closet_" + currentUser);
-    }
 
     clearManiqui();
 
@@ -393,9 +360,9 @@ function clearCloset() {
 }
 
 function deleteClothing(category, imgData) {
-    let clothes = JSON.parse(localStorage.getItem(category)) || [];
+    let clothes = JSON.parse(localStorage.getItem(closetKey(category))) || [];
     clothes = clothes.filter(i => i !== imgData);
-    localStorage.setItem(category, JSON.stringify(clothes));
+    localStorage.setItem(closetKey(category), JSON.stringify(clothes));
     refrescarOutfitsSiHayClima();
 }
 
@@ -480,7 +447,7 @@ function loadCloset() {
         if (!grid) return;
 
         grid.innerHTML = "";
-        const clothes = JSON.parse(localStorage.getItem(category)) || [];
+        const clothes = JSON.parse(localStorage.getItem(closetKey(category))) || [];
         clothes.forEach(img => createClothingItem(category, img));
     });
 }
@@ -588,14 +555,14 @@ setupClosetDragDrop();
    ============================================================ */
 
 function generateOutfits(temp, humidity, wind, sensacion) {
-    const remeras = JSON.parse(localStorage.getItem("remeras")) || [];
-    const camperasAbrigo = JSON.parse(localStorage.getItem("camperas-abrigo")) || [];
-    const camperasLivianas = JSON.parse(localStorage.getItem("camperas-livianas")) || [];
-    const pantalones = JSON.parse(localStorage.getItem("pantalones")) || [];
-    const bermudas = JSON.parse(localStorage.getItem("bermudas")) || [];
-    const vestidos = JSON.parse(localStorage.getItem("vestidos")) || [];
-    const polleras = JSON.parse(localStorage.getItem("polleras")) || [];
-    const calzado = JSON.parse(localStorage.getItem("calzado")) || [];
+    const remeras = JSON.parse(localStorage.getItem(closetKey("remeras"))) || [];
+    const camperasAbrigo = JSON.parse(localStorage.getItem(closetKey("camperas-abrigo"))) || [];
+    const camperasLivianas = JSON.parse(localStorage.getItem(closetKey("camperas-livianas"))) || [];
+    const pantalones = JSON.parse(localStorage.getItem(closetKey("pantalones"))) || [];
+    const bermudas = JSON.parse(localStorage.getItem(closetKey("bermudas"))) || [];
+    const vestidos = JSON.parse(localStorage.getItem(closetKey("vestidos"))) || [];
+    const polleras = JSON.parse(localStorage.getItem(closetKey("polleras"))) || [];
+    const calzado = JSON.parse(localStorage.getItem(closetKey("calzado"))) || [];
 
     let tops = [...remeras];
     let bottoms = [];
