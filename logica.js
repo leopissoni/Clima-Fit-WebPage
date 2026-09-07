@@ -2,10 +2,29 @@
    CLIMAFIT — LÓGICA DE LA APLICACIÓN
    ============================================================ */
 
+import {
+    getSesionGuardada,
+    logoutUser,
+    registerUser,
+    loginUser,
+    fetchCloset,
+    saveClosetRemote,
+    getSecurityQuestion,
+    verifySecurityAnswer,
+    resetPasswordWithAnswer
+} from "./api.js";
+
 const apiKey = "bd568d71412c5915f72c032677b64d04";
 let ultimoClima = null;
-let currentUser = null;
+let currentUser = null;   // email/usuario del que inició sesión (o "Invitado")
+let currentToken = null;  // JWT devuelto por /api/login — null para el invitado
+let isGuest = false;
 let selectedImgData = null;
+
+// Armario en memoria: { categoria: [imgData, imgData, ...] }
+// Para usuarios registrados, se sincroniza con Neon (GET/POST /api/closet).
+// Para el invitado, vive solo durante la sesión y nunca se persiste.
+let armario = {};
 
 const CATEGORIAS = [
     "remeras",
@@ -17,14 +36,6 @@ const CATEGORIAS = [
     "vestidos",
     "polleras"
 ];
-
-/* ---------- Clave de almacenamiento por usuario ---------- */
-// Cada usuario (y el invitado) tiene su propio armario aislado en localStorage,
-// en vez de compartir las mismas claves ("remeras", "pantalones", etc.) entre todos.
-
-function closetKey(category) {
-    return "closet_" + currentUser + "_" + category;
-}
 
 /* ============================================================
    LOGIN / REGISTRO
@@ -68,7 +79,7 @@ function togglePassword(inputId, btn) {
     btn.setAttribute("aria-label", visible ? "Mostrar contraseña" : "Ocultar contraseña");
 }
 
-/* ---------- Recuperar contraseña (con pregunta de seguridad) ---------- */
+/* ---------- Recuperar contraseña (con pregunta de seguridad, vía Neon) ---------- */
 
 let recoveryUser = null;
 
@@ -86,7 +97,7 @@ function resetRecoverFlow() {
     document.getElementById("recoverStep3").classList.add("hidden");
 }
 
-function startRecovery() {
+async function startRecovery() {
     const user = document.getElementById("recoverUser").value.trim();
 
     if (user === "") {
@@ -94,46 +105,47 @@ function startRecovery() {
         return;
     }
 
-    const question = localStorage.getItem("question_" + user);
+    try {
+        const question = await getSecurityQuestion(user);
 
-    if (localStorage.getItem("user_" + user) === null || question === null) {
-        alert("No existe ninguna cuenta con ese nombre de usuario");
-        return;
+        recoveryUser = user;
+        document.getElementById("recoverQuestionText").innerText = question;
+
+        document.getElementById("recoverStep1").classList.add("hidden");
+        document.getElementById("recoverStep2").classList.remove("hidden");
+
+    } catch (error) {
+        alert(error.message || "No existe ninguna cuenta con ese nombre de usuario");
     }
-
-    recoveryUser = user;
-    document.getElementById("recoverQuestionText").innerText = question;
-
-    document.getElementById("recoverStep1").classList.add("hidden");
-    document.getElementById("recoverStep2").classList.remove("hidden");
 }
 
-function verifyRecoveryAnswer() {
-    const answer = document.getElementById("recoverAnswer").value.trim().toLowerCase();
+async function verifyRecoveryAnswer() {
+    const answer = document.getElementById("recoverAnswer").value.trim();
 
     if (answer === "") {
         alert("Ingresá una respuesta");
         return;
     }
 
-    const savedAnswer = (localStorage.getItem("answer_" + recoveryUser) || "").trim().toLowerCase();
+    try {
+        await verifySecurityAnswer(recoveryUser, answer);
 
-    if (answer !== savedAnswer) {
-        alert("La respuesta no es correcta");
-        return;
+        document.getElementById("recoverStep2").classList.add("hidden");
+        document.getElementById("recoverStep3").classList.remove("hidden");
+
+    } catch (error) {
+        alert(error.message || "La respuesta no es correcta");
     }
-
-    document.getElementById("recoverStep2").classList.add("hidden");
-    document.getElementById("recoverStep3").classList.remove("hidden");
 }
 
-function recoverPassword() {
+async function recoverPassword() {
     if (!recoveryUser) {
         alert("Empezá de nuevo el proceso de recuperación");
         resetRecoverFlow();
         return;
     }
 
+    const answer = document.getElementById("recoverAnswer").value.trim();
     const newPass = document.getElementById("recoverNewPass").value;
     const newPassConfirm = document.getElementById("recoverNewPassConfirm").value;
 
@@ -147,19 +159,24 @@ function recoverPassword() {
         return;
     }
 
-    if (newPass.length < 4) {
-        alert("La nueva contraseña debe tener al menos 4 caracteres");
+    if (newPass.length < 6) {
+        alert("La nueva contraseña debe tener al menos 6 caracteres");
         return;
     }
 
-    localStorage.setItem("user_" + recoveryUser, newPass);
-    alert("Contraseña actualizada correctamente. Ya podés iniciar sesión.");
+    try {
+        await resetPasswordWithAnswer(recoveryUser, answer, newPass);
+        alert("Contraseña actualizada correctamente. Ya podés iniciar sesión.");
 
-    resetRecoverFlow();
-    showLogin();
+        resetRecoverFlow();
+        showLogin();
+
+    } catch (error) {
+        alert(error.message || "No se pudo actualizar la contraseña");
+    }
 }
 
-function register() {
+async function register() {
     const user = document.getElementById("registerUser").value.trim();
     const pass = document.getElementById("registerPass").value;
     const question = document.getElementById("registerSecurityQuestion").value;
@@ -170,48 +187,60 @@ function register() {
         return;
     }
 
-    if (localStorage.getItem("user_" + user) !== null) {
-        alert("Ese nombre de usuario ya existe");
+    if (pass.length < 6) {
+        alert("La contraseña debe tener al menos 6 caracteres");
         return;
     }
 
-    localStorage.setItem("user_" + user, pass);
-    localStorage.setItem("question_" + user, question);
-    localStorage.setItem("answer_" + user, answer);
+    try {
+        await registerUser(user, pass, question, answer);
 
-    alert("Usuario registrado correctamente");
+        alert("Usuario registrado correctamente");
 
-    document.getElementById("registerUser").value = "";
-    document.getElementById("registerPass").value = "";
-    document.getElementById("registerSecurityAnswer").value = "";
+        document.getElementById("registerUser").value = "";
+        document.getElementById("registerPass").value = "";
+        document.getElementById("registerSecurityAnswer").value = "";
 
-    showLogin();
+        showLogin();
+
+    } catch (error) {
+        alert(error.message || "No se pudo registrar el usuario");
+    }
 }
 
-function login() {
+async function login() {
     const user = document.getElementById("loginUser").value.trim();
     const pass = document.getElementById("loginPass").value;
-    const savedPass = localStorage.getItem("user_" + user);
 
-    if (savedPass !== null && savedPass === pass) {
-        enterApp(user);
-    } else {
-        alert("Usuario o contraseña incorrectos");
+    if (user === "" || pass === "") {
+        alert("Completa usuario y contraseña");
+        return;
+    }
+
+    try {
+        const sesion = await loginUser(user, pass);
+        await enterApp(sesion.email, sesion.token);
+
+    } catch (error) {
+        alert(error.message || "Usuario o contraseña incorrectos");
     }
 }
 
 function guest() {
-    enterApp("Invitado");
+    isGuest = true;
+    armario = {};
+    enterApp("Invitado", null);
 }
 
 function logout() {
-    // Al invitado no le persistimos el armario entre sesiones:
-    // se borra su armario temporal al salir.
-    if (currentUser === "Invitado") {
-        CATEGORIAS.forEach(category => localStorage.removeItem(closetKey(category)));
+    if (!isGuest) {
+        logoutUser();
     }
 
     currentUser = null;
+    currentToken = null;
+    isGuest = false;
+    armario = {};
 
     document.getElementById("app").classList.add("hidden");
     document.getElementById("auth-screen").classList.remove("hidden");
@@ -222,16 +251,52 @@ function logout() {
     showLogin();
 }
 
-function enterApp(user) {
+async function enterApp(user, token) {
     currentUser = user;
+    currentToken = token;
+    isGuest = token === null;
 
     document.getElementById("welcomeUser").innerText = "Bienvenido, " + user;
     document.getElementById("auth-screen").classList.add("hidden");
     document.getElementById("app").classList.remove("hidden");
 
-    loadCloset();
+    if (!isGuest) {
+        try {
+            armario = await fetchCloset(currentToken);
+        } catch (error) {
+            alert("No se pudo cargar tu armario desde el servidor: " + (error.message || error));
+            armario = {};
+        }
+    }
+
+    renderCloset();
     updateClock();
 }
+
+/* ---------- Restaurar sesión guardada al abrir la página ---------- */
+
+(async function restaurarSesion() {
+    const sesion = getSesionGuardada();
+    if (!sesion || !sesion.token) return;
+
+    try {
+        armario = await fetchCloset(sesion.token);
+        currentUser = sesion.email;
+        currentToken = sesion.token;
+        isGuest = false;
+
+        document.getElementById("welcomeUser").innerText = "Bienvenido, " + currentUser;
+        document.getElementById("auth-screen").classList.add("hidden");
+        document.getElementById("app").classList.remove("hidden");
+
+        renderCloset();
+        updateClock();
+
+    } catch (error) {
+        // El token venció o es inválido: se descarta la sesión guardada
+        logoutUser();
+    }
+})();
 
 /* ============================================================
    RELOJ
@@ -393,14 +458,23 @@ function clearManiqui() {
    ARMARIO
    ============================================================ */
 
-function saveClothing(category, img) {
-    const clothes = JSON.parse(localStorage.getItem(closetKey(category))) || [];
-    clothes.push(img);
-    localStorage.setItem(closetKey(category), JSON.stringify(clothes));
+function persistCloset() {
+    // El invitado nunca persiste: su armario vive solo en memoria durante la sesión.
+    if (isGuest || !currentToken) return Promise.resolve();
+
+    return saveClosetRemote(currentToken, armario).catch(error => {
+        alert("No se pudo guardar el armario en el servidor: " + (error.message || error));
+    });
 }
 
-function saveCloset() {
-    if (currentUser === "Invitado") {
+function saveClothing(category, img) {
+    if (!armario[category]) armario[category] = [];
+    armario[category].push(img);
+    persistCloset();
+}
+
+async function saveCloset() {
+    if (isGuest) {
         const continuar = confirm(
             "Estás como invitado: tu armario no se guarda de forma permanente y se borra al salir.\n\n¿Querés crear una cuenta o iniciar sesión para guardarlo?"
         );
@@ -412,18 +486,25 @@ function saveCloset() {
         return;
     }
 
-    alert("Tu armario ya está guardado ✅");
+    try {
+        await saveClosetRemote(currentToken, armario);
+        alert("Tu armario ya está guardado en el servidor ✅");
+    } catch (error) {
+        alert("No se pudo guardar el armario: " + (error.message || error));
+    }
 }
 
 function clearCloset() {
     if (!confirm("¿Vaciar todo el armario?")) return;
 
+    armario = {};
+
     CATEGORIAS.forEach(category => {
-        localStorage.removeItem(closetKey(category));
         const grid = document.getElementById(category);
         if (grid) grid.innerHTML = "";
     });
 
+    persistCloset();
     clearManiqui();
 
     for (let i = 1; i <= 3; i++) {
@@ -438,9 +519,8 @@ function clearCloset() {
 }
 
 function deleteClothing(category, imgData) {
-    let clothes = JSON.parse(localStorage.getItem(closetKey(category))) || [];
-    clothes = clothes.filter(i => i !== imgData);
-    localStorage.setItem(closetKey(category), JSON.stringify(clothes));
+    armario[category] = (armario[category] || []).filter(i => i !== imgData);
+    persistCloset();
     refrescarOutfitsSiHayClima();
 }
 
@@ -519,13 +599,13 @@ function createClothingItem(category, imgData) {
     document.getElementById(category).appendChild(box);
 }
 
-function loadCloset() {
+function renderCloset() {
     CATEGORIAS.forEach(category => {
         const grid = document.getElementById(category);
         if (!grid) return;
 
         grid.innerHTML = "";
-        const clothes = JSON.parse(localStorage.getItem(closetKey(category))) || [];
+        const clothes = armario[category] || [];
         clothes.forEach(img => createClothingItem(category, img));
     });
 }
@@ -633,14 +713,14 @@ setupClosetDragDrop();
    ============================================================ */
 
 function generateOutfits(temp, humidity, wind, sensacion) {
-    const remeras = JSON.parse(localStorage.getItem(closetKey("remeras"))) || [];
-    const camperasAbrigo = JSON.parse(localStorage.getItem(closetKey("camperas-abrigo"))) || [];
-    const camperasLivianas = JSON.parse(localStorage.getItem(closetKey("camperas-livianas"))) || [];
-    const pantalones = JSON.parse(localStorage.getItem(closetKey("pantalones"))) || [];
-    const bermudas = JSON.parse(localStorage.getItem(closetKey("bermudas"))) || [];
-    const vestidos = JSON.parse(localStorage.getItem(closetKey("vestidos"))) || [];
-    const polleras = JSON.parse(localStorage.getItem(closetKey("polleras"))) || [];
-    const calzado = JSON.parse(localStorage.getItem(closetKey("calzado"))) || [];
+    const remeras = armario["remeras"] || [];
+    const camperasAbrigo = armario["camperas-abrigo"] || [];
+    const camperasLivianas = armario["camperas-livianas"] || [];
+    const pantalones = armario["pantalones"] || [];
+    const bermudas = armario["bermudas"] || [];
+    const vestidos = armario["vestidos"] || [];
+    const polleras = armario["polleras"] || [];
+    const calzado = armario["calzado"] || [];
 
     let tops = [...remeras];
     let bottoms = [];
@@ -868,3 +948,28 @@ function generateOutfits(temp, humidity, wind, sensacion) {
         }
     }
 }
+
+/* ============================================================
+   EXPONER FUNCIONES AL SCOPE GLOBAL
+   ============================================================
+   Como este archivo ahora es un módulo ES (type="module", para poder
+   hacer "import" de api.js), sus funciones ya NO quedan disponibles
+   automáticamente en window. Los onclick="..." del HTML sí las
+   necesitan ahí, así que se exponen explícitamente.
+*/
+
+window.showRegister = showRegister;
+window.showLogin = showLogin;
+window.showRecover = showRecover;
+window.togglePassword = togglePassword;
+window.startRecovery = startRecovery;
+window.verifyRecoveryAnswer = verifyRecoveryAnswer;
+window.recoverPassword = recoverPassword;
+window.register = register;
+window.login = login;
+window.guest = guest;
+window.logout = logout;
+window.getWeather = getWeather;
+window.saveCloset = saveCloset;
+window.clearCloset = clearCloset;
+window.clearManiqui = clearManiqui;

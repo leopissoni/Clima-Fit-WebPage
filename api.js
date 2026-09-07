@@ -1,3 +1,11 @@
+// api.js
+// Módulo del FRONTEND (va en la raíz del proyecto, junto a index.html y logica.js).
+// No confundir con la carpeta /api que contiene las funciones serverless
+// (login.js, register.js, closet.js, _lib.js).
+//
+// Se encarga de:
+//  - Guardar/leer la sesión (token + email) en localStorage
+//  - Llamar a los endpoints /api/login, /api/register y /api/closet
 
 const SESSION_KEY = "climafit_session";
 
@@ -40,11 +48,11 @@ async function parseRespuesta(response) {
 
 /* ---------- Registro ---------- */
 
-export async function registerUser(email, password) {
+export async function registerUser(email, password, securityQuestion, securityAnswer) {
     const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ email, password, securityQuestion, securityAnswer })
     });
 
     return parseRespuesta(response);
@@ -65,6 +73,39 @@ export async function loginUser(email, password) {
     guardarSesion(sesion);
 
     return sesion;
+}
+
+/* ---------- Recuperar contraseña ---------- */
+
+export async function getSecurityQuestion(email) {
+    const response = await fetch("/api/recover-question", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+    });
+
+    const data = await parseRespuesta(response);
+    return data.question;
+}
+
+export async function verifySecurityAnswer(email, answer) {
+    const response = await fetch("/api/recover-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, answer })
+    });
+
+    return parseRespuesta(response);
+}
+
+export async function resetPasswordWithAnswer(email, answer, newPassword) {
+    const response = await fetch("/api/recover-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, answer, newPassword })
+    });
+
+    return parseRespuesta(response);
 }
 
 /* ---------- Armario remoto (Neon) ---------- */
