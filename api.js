@@ -1,11 +1,3 @@
-// api.js
-// Módulo del FRONTEND (va en la raíz del proyecto, junto a index.html y logica.js).
-// No confundir con la carpeta /api que contiene las funciones serverless
-// (login.js, register.js, closet.js, _lib.js).
-//
-// Se encarga de:
-//  - Guardar/leer la sesión (token + email) en localStorage
-//  - Llamar a los endpoints /api/login, /api/register y /api/closet
 
 const SESSION_KEY = "climafit_session";
 

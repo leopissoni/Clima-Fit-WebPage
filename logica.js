@@ -46,6 +46,7 @@ function showRecover() {
     document.getElementById("loginBox").classList.add("hidden");
     document.getElementById("registerBox").classList.add("hidden");
     document.getElementById("recoverBox").classList.remove("hidden");
+    resetRecoverFlow();
 }
 
 /* ---------- Mostrar / ocultar contraseña ---------- */
@@ -67,20 +68,77 @@ function togglePassword(inputId, btn) {
     btn.setAttribute("aria-label", visible ? "Mostrar contraseña" : "Ocultar contraseña");
 }
 
-/* ---------- Recuperar contraseña ---------- */
+/* ---------- Recuperar contraseña (con pregunta de seguridad) ---------- */
 
-function recoverPassword() {
+let recoveryUser = null;
+
+function resetRecoverFlow() {
+    recoveryUser = null;
+
+    document.getElementById("recoverUser").value = "";
+    document.getElementById("recoverAnswer").value = "";
+    document.getElementById("recoverNewPass").value = "";
+    document.getElementById("recoverNewPassConfirm").value = "";
+    document.getElementById("recoverQuestionText").innerText = "";
+
+    document.getElementById("recoverStep1").classList.remove("hidden");
+    document.getElementById("recoverStep2").classList.add("hidden");
+    document.getElementById("recoverStep3").classList.add("hidden");
+}
+
+function startRecovery() {
     const user = document.getElementById("recoverUser").value.trim();
-    const newPass = document.getElementById("recoverNewPass").value;
-    const newPassConfirm = document.getElementById("recoverNewPassConfirm").value;
 
-    if (user === "" || newPass === "" || newPassConfirm === "") {
-        alert("Completa todos los campos");
+    if (user === "") {
+        alert("Ingresá tu nombre de usuario");
         return;
     }
 
-    if (localStorage.getItem("user_" + user) === null) {
+    const question = localStorage.getItem("question_" + user);
+
+    if (localStorage.getItem("user_" + user) === null || question === null) {
         alert("No existe ninguna cuenta con ese nombre de usuario");
+        return;
+    }
+
+    recoveryUser = user;
+    document.getElementById("recoverQuestionText").innerText = question;
+
+    document.getElementById("recoverStep1").classList.add("hidden");
+    document.getElementById("recoverStep2").classList.remove("hidden");
+}
+
+function verifyRecoveryAnswer() {
+    const answer = document.getElementById("recoverAnswer").value.trim().toLowerCase();
+
+    if (answer === "") {
+        alert("Ingresá una respuesta");
+        return;
+    }
+
+    const savedAnswer = (localStorage.getItem("answer_" + recoveryUser) || "").trim().toLowerCase();
+
+    if (answer !== savedAnswer) {
+        alert("La respuesta no es correcta");
+        return;
+    }
+
+    document.getElementById("recoverStep2").classList.add("hidden");
+    document.getElementById("recoverStep3").classList.remove("hidden");
+}
+
+function recoverPassword() {
+    if (!recoveryUser) {
+        alert("Empezá de nuevo el proceso de recuperación");
+        resetRecoverFlow();
+        return;
+    }
+
+    const newPass = document.getElementById("recoverNewPass").value;
+    const newPassConfirm = document.getElementById("recoverNewPassConfirm").value;
+
+    if (newPass === "" || newPassConfirm === "") {
+        alert("Completá los dos campos de contraseña");
         return;
     }
 
@@ -94,22 +152,21 @@ function recoverPassword() {
         return;
     }
 
-    localStorage.setItem("user_" + user, newPass);
+    localStorage.setItem("user_" + recoveryUser, newPass);
     alert("Contraseña actualizada correctamente. Ya podés iniciar sesión.");
 
-    document.getElementById("recoverUser").value = "";
-    document.getElementById("recoverNewPass").value = "";
-    document.getElementById("recoverNewPassConfirm").value = "";
-
+    resetRecoverFlow();
     showLogin();
 }
 
 function register() {
     const user = document.getElementById("registerUser").value.trim();
     const pass = document.getElementById("registerPass").value;
+    const question = document.getElementById("registerSecurityQuestion").value;
+    const answer = document.getElementById("registerSecurityAnswer").value.trim();
 
-    if (user === "" || pass === "") {
-        alert("Completa todos los campos");
+    if (user === "" || pass === "" || answer === "") {
+        alert("Completa todos los campos, incluida la respuesta secreta");
         return;
     }
 
@@ -119,7 +176,15 @@ function register() {
     }
 
     localStorage.setItem("user_" + user, pass);
+    localStorage.setItem("question_" + user, question);
+    localStorage.setItem("answer_" + user, answer);
+
     alert("Usuario registrado correctamente");
+
+    document.getElementById("registerUser").value = "";
+    document.getElementById("registerPass").value = "";
+    document.getElementById("registerSecurityAnswer").value = "";
+
     showLogin();
 }
 
@@ -173,7 +238,20 @@ function enterApp(user) {
    ============================================================ */
 
 function updateClock() {
-    document.getElementById("clock").innerText = new Date().toLocaleString("es-AR");
+    const ahora = new Date();
+
+    const fecha = ahora.toLocaleDateString("es-AR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+    }).replace(",", "");
+
+    const horas = String(ahora.getHours()).padStart(2, "0");
+    const minutos = String(ahora.getMinutes()).padStart(2, "0");
+    const segundos = String(ahora.getSeconds()).padStart(2, "0");
+
+    document.getElementById("clock").innerText = `${fecha} ${horas}.${minutos}:${segundos}`;
 }
 setInterval(updateClock, 1000);
 
