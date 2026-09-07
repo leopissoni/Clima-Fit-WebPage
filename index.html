@@ -41,32 +41,66 @@
                     </button>
                 </div>
 
+                <select id="registerSecurityQuestion">
+                    <option value="¿Cuál es el nombre de tu primera mascota?">¿Cuál es el nombre de tu primera mascota?</option>
+                    <option value="¿Cuál es tu comida favorita?">¿Cuál es tu comida favorita?</option>
+                    <option value="¿En qué ciudad naciste?">¿En qué ciudad naciste?</option>
+                    <option value="¿Cuál es el nombre de tu mejor amigo/a de la infancia?">¿Cuál es el nombre de tu mejor amigo/a de la infancia?</option>
+                    <option value="¿Cuál fue el nombre de tu primer colegio?">¿Cuál fue el nombre de tu primer colegio?</option>
+                </select>
+
+                <input type="text" id="registerSecurityAnswer" placeholder="Respuesta secreta" autocomplete="off">
+
                 <button onclick="register()">Registrarse</button>
                 <button class="ghost" onclick="showLogin()">Volver al Login</button>
             </div>
 
             <div id="recoverBox" class="hidden">
-                <p class="recover-info">
-                    Ingresá tu usuario y elegí una nueva contraseña para tu cuenta.
-                </p>
 
-                <input type="text" id="recoverUser" placeholder="Usuario" autocomplete="username">
+                <div id="recoverStep1">
+                    <p class="recover-info">
+                        Ingresá tu usuario para empezar a recuperar tu contraseña.
+                    </p>
 
-                <div class="password-field">
-                    <input type="password" id="recoverNewPass" placeholder="Nueva Contraseña" autocomplete="new-password">
-                    <button type="button" class="toggle-pass-btn" onclick="togglePassword('recoverNewPass', this)" aria-label="Mostrar contraseña">
-                        <i class="fa-solid fa-eye"></i>
-                    </button>
+                    <input type="text" id="recoverUser" placeholder="Usuario" autocomplete="username">
+
+                    <button class="auth-btn" onclick="startRecovery()">Continuar</button>
                 </div>
 
-                <div class="password-field">
-                    <input type="password" id="recoverNewPassConfirm" placeholder="Repetir Nueva Contraseña" autocomplete="new-password">
-                    <button type="button" class="toggle-pass-btn" onclick="togglePassword('recoverNewPassConfirm', this)" aria-label="Mostrar contraseña">
-                        <i class="fa-solid fa-eye"></i>
-                    </button>
+                <div id="recoverStep2" class="hidden">
+                    <p class="recover-info">
+                        Para confirmar que sos vos, respondé tu pregunta secreta:
+                    </p>
+
+                    <p id="recoverQuestionText" class="recover-info" style="color:var(--primary); font-weight:600;"></p>
+
+                    <input type="text" id="recoverAnswer" placeholder="Tu respuesta" autocomplete="off">
+
+                    <button class="auth-btn" onclick="verifyRecoveryAnswer()">Verificar respuesta</button>
                 </div>
 
-                <button class="auth-btn" onclick="recoverPassword()">Restablecer Contraseña</button>
+                <div id="recoverStep3" class="hidden">
+                    <p class="recover-info">
+                        Elegí tu nueva contraseña.
+                    </p>
+
+                    <div class="password-field">
+                        <input type="password" id="recoverNewPass" placeholder="Nueva Contraseña" autocomplete="new-password">
+                        <button type="button" class="toggle-pass-btn" onclick="togglePassword('recoverNewPass', this)" aria-label="Mostrar contraseña">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+
+                    <div class="password-field">
+                        <input type="password" id="recoverNewPassConfirm" placeholder="Repetir Nueva Contraseña" autocomplete="new-password">
+                        <button type="button" class="toggle-pass-btn" onclick="togglePassword('recoverNewPassConfirm', this)" aria-label="Mostrar contraseña">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                    </div>
+
+                    <button class="auth-btn" onclick="recoverPassword()">Restablecer Contraseña</button>
+                </div>
+
                 <button class="ghost" onclick="showLogin()">Volver al Login</button>
             </div>
         </div>
@@ -229,6 +263,6 @@
 
     </div>
 
-    <script src="logica.js"></script>
+    <script src="logica.js?v=2"></script>
 </body>
 </html>
