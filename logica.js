@@ -1,0 +1,973 @@
+/* ============================================================
+   CLIMAFIT — LÓGICA DE LA APLICACIÓN
+   ============================================================ */
+
+import {
+    getSesionGuardada,
+    logoutUser,
+    registerUser,
+    loginUser,
+    fetchCloset,
+    saveClosetRemote,
+    getSecurityQuestion,
+    verifySecurityAnswer,
+    resetPasswordWithAnswer
+} from "./api.js";
+
+const apiKey = "bd568d71412c5915f72c032677b64d04";
+let ultimoClima = null;
+let currentUser = null;   
+let currentToken = null; 
+let isGuest = false;
+let selectedImgData = null;
+
+
+let armario = {};
+
+const CATEGORIAS = [
+    "remeras",
+    "pantalones",
+    "bermudas",
+    "camperas-livianas",
+    "camperas-abrigo",
+    "calzado",
+    "vestidos",
+    "polleras"
+];
+
+/* ============================================================
+   LOGIN / REGISTRO
+   ============================================================ */
+
+function showRegister() {
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("registerBox").classList.remove("hidden");
+    document.getElementById("recoverBox").classList.add("hidden");
+}
+
+function showLogin() {
+    document.getElementById("registerBox").classList.add("hidden");
+    document.getElementById("recoverBox").classList.add("hidden");
+    document.getElementById("loginBox").classList.remove("hidden");
+}
+
+function showRecover() {
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("registerBox").classList.add("hidden");
+    document.getElementById("recoverBox").classList.remove("hidden");
+    resetRecoverFlow();
+}
+
+/* ---------- Mostrar / ocultar contraseña ---------- */
+
+function togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const icon = btn.querySelector("i");
+    const visible = input.type === "text";
+
+    input.type = visible ? "password" : "text";
+
+    if (icon) {
+        icon.classList.toggle("fa-eye", visible);
+        icon.classList.toggle("fa-eye-slash", !visible);
+    }
+
+    btn.setAttribute("aria-label", visible ? "Mostrar contraseña" : "Ocultar contraseña");
+}
+
+/* ---------- Recuperar contraseña (con pregunta de seguridad, vía Neon) ---------- */
+
+let recoveryUser = null;
+
+function resetRecoverFlow() {
+    recoveryUser = null;
+
+    document.getElementById("recoverUser").value = "";
+    document.getElementById("recoverAnswer").value = "";
+    document.getElementById("recoverNewPass").value = "";
+    document.getElementById("recoverNewPassConfirm").value = "";
+    document.getElementById("recoverQuestionText").innerText = "";
+
+    document.getElementById("recoverStep1").classList.remove("hidden");
+    document.getElementById("recoverStep2").classList.add("hidden");
+    document.getElementById("recoverStep3").classList.add("hidden");
+}
+
+async function startRecovery() {
+    const user = document.getElementById("recoverUser").value.trim();
+
+    if (user === "") {
+        alert("Ingresá tu nombre de usuario");
+        return;
+    }
+
+    try {
+        const question = await getSecurityQuestion(user);
+
+        recoveryUser = user;
+        document.getElementById("recoverQuestionText").innerText = question;
+
+        document.getElementById("recoverStep1").classList.add("hidden");
+        document.getElementById("recoverStep2").classList.remove("hidden");
+
+    } catch (error) {
+        alert(error.message || "No existe ninguna cuenta con ese nombre de usuario");
+    }
+}
+
+async function verifyRecoveryAnswer() {
+    const answer = document.getElementById("recoverAnswer").value.trim();
+
+    if (answer === "") {
+        alert("Ingresá una respuesta");
+        return;
+    }
+
+    try {
+        await verifySecurityAnswer(recoveryUser, answer);
+
+        document.getElementById("recoverStep2").classList.add("hidden");
+        document.getElementById("recoverStep3").classList.remove("hidden");
+
+    } catch (error) {
+        alert(error.message || "La respuesta no es correcta");
+    }
+}
+
+async function recoverPassword() {
+    if (!recoveryUser) {
+        alert("Empezá de nuevo el proceso de recuperación");
+        resetRecoverFlow();
+        return;
+    }
+
+    const answer = document.getElementById("recoverAnswer").value.trim();
+    const newPass = document.getElementById("recoverNewPass").value;
+    const newPassConfirm = document.getElementById("recoverNewPassConfirm").value;
+
+    if (newPass === "" || newPassConfirm === "") {
+        alert("Completá los dos campos de contraseña");
+        return;
+    }
+
+    if (newPass !== newPassConfirm) {
+        alert("Las contraseñas no coinciden");
+        return;
+    }
+
+    if (newPass.length < 6) {
+        alert("La nueva contraseña debe tener al menos 6 caracteres");
+        return;
+    }
+
+    try {
+        await resetPasswordWithAnswer(recoveryUser, answer, newPass);
+        alert("Contraseña actualizada correctamente. Ya podés iniciar sesión.");
+
+        resetRecoverFlow();
+        showLogin();
+
+    } catch (error) {
+        alert(error.message || "No se pudo actualizar la contraseña");
+    }
+}
+
+async function register() {
+    const user = document.getElementById("registerUser").value.trim();
+    const pass = document.getElementById("registerPass").value;
+    const question = document.getElementById("registerSecurityQuestion").value;
+    const answer = document.getElementById("registerSecurityAnswer").value.trim();
+
+    if (user === "" || pass === "" || answer === "") {
+        alert("Completa todos los campos, incluida la respuesta secreta");
+        return;
+    }
+
+    if (pass.length < 6) {
+        alert("La contraseña debe tener al menos 6 caracteres");
+        return;
+    }
+
+    try {
+        await registerUser(user, pass, question, answer);
+
+        alert("Usuario registrado correctamente");
+
+        document.getElementById("registerUser").value = "";
+        document.getElementById("registerPass").value = "";
+        document.getElementById("registerSecurityAnswer").value = "";
+
+        showLogin();
+
+    } catch (error) {
+        alert(error.message || "No se pudo registrar el usuario");
+    }
+}
+
+async function login() {
+    const user = document.getElementById("loginUser").value.trim();
+    const pass = document.getElementById("loginPass").value;
+
+    if (user === "" || pass === "") {
+        alert("Completa usuario y contraseña");
+        return;
+    }
+
+    try {
+        const sesion = await loginUser(user, pass);
+        await enterApp(sesion.user, sesion.token);
+
+    } catch (error) {
+        alert(error.message || "Usuario o contraseña incorrectos");
+    }
+}
+
+function guest() {
+    isGuest = true;
+    armario = {};
+    enterApp("Invitado", null);
+}
+
+function logout() {
+    if (!isGuest) {
+        logoutUser();
+    }
+
+    currentUser = null;
+    currentToken = null;
+    isGuest = false;
+    armario = {};
+
+    document.getElementById("app").classList.add("hidden");
+    document.getElementById("auth-screen").classList.remove("hidden");
+
+    document.getElementById("loginUser").value = "";
+    document.getElementById("loginPass").value = "";
+
+    showLogin();
+}
+
+async function enterApp(user, token) {
+    currentUser = user;
+    currentToken = token;
+    isGuest = token === null;
+
+    document.getElementById("welcomeUser").innerText = "Bienvenido, " + user;
+    document.getElementById("auth-screen").classList.add("hidden");
+    document.getElementById("app").classList.remove("hidden");
+
+    if (!isGuest) {
+        try {
+            armario = await fetchCloset(currentToken);
+        } catch (error) {
+            alert("No se pudo cargar tu armario desde el servidor: " + (error.message || error));
+            armario = {};
+        }
+    }
+
+    renderCloset();
+    updateClock();
+}
+
+/* ---------- Restaurar sesión guardada al abrir la página ---------- */
+
+(async function restaurarSesion() {
+    const sesion = getSesionGuardada();
+    if (!sesion || !sesion.token) return;
+
+    try {
+        armario = await fetchCloset(sesion.token);
+        currentUser = sesion.user;
+        currentToken = sesion.token;
+        isGuest = false;
+
+        document.getElementById("welcomeUser").innerText = "Bienvenido, " + currentUser;
+        document.getElementById("auth-screen").classList.add("hidden");
+        document.getElementById("app").classList.remove("hidden");
+
+        renderCloset();
+        updateClock();
+
+    } catch (error) {
+        // El token venció o es inválido: se descarta la sesión guardada
+        logoutUser();
+    }
+})();
+
+/* ============================================================
+   RELOJ
+   ============================================================ */
+
+function updateClock() {
+    const ahora = new Date();
+
+    const fecha = ahora.toLocaleDateString("es-AR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+    }).replace(",", "");
+
+    const horas = String(ahora.getHours()).padStart(2, "0");
+    const minutos = String(ahora.getMinutes()).padStart(2, "0");
+    const segundos = String(ahora.getSeconds()).padStart(2, "0");
+
+    document.getElementById("clock").innerText = `${fecha} ${horas}.${minutos}:${segundos}`;
+}
+setInterval(updateClock, 1000);
+
+/* ============================================================
+   API CLIMA
+   ============================================================ */
+
+async function getWeather() {
+    const city = document.getElementById("city").value.trim();
+
+    if (!city) {
+        alert("Ingresá una ciudad");
+        return;
+    }
+
+    const btn = document.querySelector(".search button");
+    btn.disabled = true;
+    btn.innerText = "Cargando...";
+
+    const url = `https://api.openweathermap.org/data/2.5/forecast?q=${encodeURIComponent(city)}&appid=${apiKey}&units=metric&lang=es`;
+
+    try {
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            if (response.status === 404) {
+                alert("Ciudad no encontrada. Verificá el nombre.");
+            } else if (response.status === 401) {
+                alert("La clave de la API del clima no es válida o expiró. Revisá el apiKey en logica.js.");
+            } else {
+                alert("Error de conexión: " + response.status);
+            }
+            return;
+        }
+
+        const data = await response.json();
+        const clima = data.list[0];
+
+        const temp = clima.main.temp;
+        const humidity = clima.main.humidity;
+        const windMs = clima.wind.speed;
+        const wind = Number((windMs * 3.6).toFixed(1));
+        const desc = clima.weather[0].description;
+        const precipitation = Math.round((clima.pop || 0) * 100);
+        const weatherIcon = clima.weather[0].icon;
+
+        let sensacion;
+        if (temp <= 10 && wind > 4.8) {
+            sensacion = 13.12 + 0.6215 * temp - 11.37 * Math.pow(wind, 0.16) + 0.3965 * temp * Math.pow(wind, 0.16);
+        } else {
+            sensacion = temp - (wind * 0.05) + (humidity * 0.015);
+        }
+        sensacion = parseFloat(sensacion.toFixed(1));
+
+        ultimoClima = { temp, humidity, wind, sensacion };
+
+        document.getElementById("weatherResult").innerHTML = `
+            <div class="weather-card-modern">
+                <div class="weather-header">
+                    <h2>${city}</h2>
+                    <img src="https://openweathermap.org/img/wn/${weatherIcon}@2x.png" alt="clima">
+                </div>
+                <div class="weather-temp">${temp.toFixed(1)}°C</div>
+                <div class="weather-details">
+                    <div>💧 Humedad<br><strong>${humidity}%</strong></div>
+                    <div>🌬 Viento<br><strong>${wind} km/h</strong></div>
+                    <div>🌧 Lluvia<br><strong>${precipitation}%</strong></div>
+                </div>
+                <div class="weather-desc">${desc}</div>
+            </div>
+        `;
+
+        generateOutfits(temp, humidity, wind, sensacion);
+        changeBackground(desc);
+
+    } catch (error) {
+        console.error(error);
+        alert("No se pudo obtener el clima. Revisá tu conexión.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = "Buscar";
+    }
+}
+
+function changeBackground(desc) {
+    desc = desc.toLowerCase();
+
+    const fondos = {
+        lluv: "linear-gradient(135deg,#374151,#1f2937,#111827)",
+        nube: "linear-gradient(135deg,#94a3b8,#64748b,#334155)",
+        torment: "linear-gradient(135deg,#312e81,#1e1b4b,#111827)",
+        niebla: "linear-gradient(135deg,#cbd5e1,#94a3b8,#64748b)"
+    };
+
+    const clave = Object.keys(fondos).find(k => desc.includes(k));
+    document.body.style.background = clave
+        ? fondos[clave]
+        : "linear-gradient(135deg,#38bdf8,#0ea5e9,#0369a1)";
+}
+
+/* ============================================================
+   MANIQUÍ
+   ============================================================ */
+
+function setManiquiImg(id, src) {
+    const el = document.getElementById(id);
+    if (!el) return;
+
+    if (src) {
+        el.src = src;
+        el.classList.add("visible");
+    } else {
+        el.removeAttribute("src");
+        el.classList.remove("visible");
+    }
+
+    actualizarMensajeManiqui();
+}
+
+function actualizarMensajeManiqui() {
+    const mensaje = document.getElementById("maniquiEmpty");
+    if (!mensaje) return;
+
+    const tienePrendas = ["manualJacket", "manualTop", "manualDress", "manualBottom", "manualShoes"]
+        .some(id => document.getElementById(id)?.classList.contains("visible"));
+
+    mensaje.style.display = tienePrendas ? "none" : "block";
+}
+
+function clearManiqui() {
+    setManiquiImg("manualJacket", null);
+    setManiquiImg("manualTop", null);
+    setManiquiImg("manualDress", null);
+    setManiquiImg("manualBottom", null);
+    setManiquiImg("manualShoes", null);
+}
+
+/* ============================================================
+   ARMARIO
+   ============================================================ */
+
+function persistCloset() {
+    // El invitado nunca persiste: su armario vive solo en memoria durante la sesión.
+    if (isGuest || !currentToken) return Promise.resolve();
+
+    return saveClosetRemote(currentToken, armario).catch(error => {
+        alert("No se pudo guardar el armario en el servidor: " + (error.message || error));
+    });
+}
+
+function saveClothing(category, img) {
+    if (!armario[category]) armario[category] = [];
+    armario[category].push(img);
+    persistCloset();
+}
+
+async function saveCloset() {
+    if (isGuest) {
+        const continuar = confirm(
+            "Estás como invitado: tu armario no se guarda de forma permanente y se borra al salir.\n\n¿Querés crear una cuenta o iniciar sesión para guardarlo?"
+        );
+        if (!continuar) return;
+
+        document.getElementById("app").classList.add("hidden");
+        document.getElementById("auth-screen").classList.remove("hidden");
+        showRegister();
+        return;
+    }
+
+    try {
+        await saveClosetRemote(currentToken, armario);
+        alert("Tu armario ya está guardado en el servidor ✅");
+    } catch (error) {
+        alert("No se pudo guardar el armario: " + (error.message || error));
+    }
+}
+
+function clearCloset() {
+    if (!confirm("¿Vaciar todo el armario?")) return;
+
+    armario = {};
+
+    CATEGORIAS.forEach(category => {
+        const grid = document.getElementById(category);
+        if (grid) grid.innerHTML = "";
+    });
+
+    persistCloset();
+    clearManiqui();
+
+    for (let i = 1; i <= 3; i++) {
+        const outfit = document.getElementById("outfit" + i);
+        if (outfit) outfit.innerHTML = "";
+    }
+
+    document.getElementById("recommendation").innerText = "Armario vacío.";
+    ultimoClima = null;
+
+    alert("Armario vaciado correctamente");
+}
+
+function deleteClothing(category, imgData) {
+    armario[category] = (armario[category] || []).filter(i => i !== imgData);
+    persistCloset();
+    refrescarOutfitsSiHayClima();
+}
+
+function refrescarOutfitsSiHayClima() {
+    if (!ultimoClima) return;
+    generateOutfits(ultimoClima.temp, ultimoClima.humidity, ultimoClima.wind, ultimoClima.sensacion);
+}
+
+function useOnManiqui(category, imgData) {
+    if (category === "remeras") {
+        setManiquiImg("manualTop", imgData);
+        setManiquiImg("manualDress", null);
+    }
+
+    if (category === "camperas-livianas" || category === "camperas-abrigo") {
+        setManiquiImg("manualJacket", imgData);
+        setManiquiImg("manualDress", null);
+    }
+
+    if (category === "pantalones" || category === "bermudas" || category === "polleras") {
+        setManiquiImg("manualBottom", imgData);
+        setManiquiImg("manualDress", null);
+    }
+
+    if (category === "vestidos") {
+        setManiquiImg("manualDress", imgData);
+        setManiquiImg("manualTop", null);
+        setManiquiImg("manualJacket", null);
+        setManiquiImg("manualBottom", null);
+    }
+
+    if (category === "calzado") {
+        setManiquiImg("manualShoes", imgData);
+    }
+}
+
+function createClothingItem(category, imgData) {
+    const box = document.createElement("div");
+    box.classList.add("prenda-box");
+
+    const img = document.createElement("img");
+    img.src = imgData;
+    img.alt = category;
+    img.draggable = true;
+
+    img.addEventListener("dragstart", function (e) {
+        box.classList.add("dragging");
+        e.dataTransfer.setData("text/plain", JSON.stringify({ img: imgData, source: category }));
+    });
+
+    img.addEventListener("dragend", function () {
+        box.classList.remove("dragging");
+    });
+
+    const del = document.createElement("button");
+    del.innerText = "✖";
+    del.classList.add("delete-btn");
+    del.title = "Eliminar prenda";
+    del.onclick = () => {
+        if (confirm("¿Eliminar esta prenda?")) {
+            box.remove();
+            deleteClothing(category, imgData);
+        }
+    };
+
+    const use = document.createElement("button");
+    use.innerText = "Usar";
+    use.classList.add("use-btn");
+    use.title = "Poner en el maniquí";
+    use.onclick = () => useOnManiqui(category, imgData);
+
+    box.appendChild(img);
+    box.appendChild(del);
+    box.appendChild(use);
+
+    document.getElementById(category).appendChild(box);
+}
+
+function renderCloset() {
+    CATEGORIAS.forEach(category => {
+        const grid = document.getElementById(category);
+        if (!grid) return;
+
+        grid.innerHTML = "";
+        const clothes = armario[category] || [];
+        clothes.forEach(img => createClothingItem(category, img));
+    });
+}
+
+/* ---------- Selección de archivo / vista previa ---------- */
+
+document.getElementById("upload").addEventListener("change", function () {
+    const texto = document.getElementById("fileName");
+    const previewBox = document.getElementById("uploadPreviewBox");
+    const preview = document.getElementById("uploadPreview");
+
+    if (!this.files.length) {
+        texto.textContent = "Ningún archivo seleccionado";
+        previewBox.classList.add("hidden");
+        selectedImgData = null;
+        return;
+    }
+
+    const file = this.files[0];
+
+    if (!file.type.startsWith("image/")) {
+        alert("Solo se aceptan archivos de imagen");
+        this.value = "";
+        texto.textContent = "Ningún archivo seleccionado";
+        previewBox.classList.add("hidden");
+        selectedImgData = null;
+        return;
+    }
+
+    texto.textContent = file.name;
+
+    const reader = new FileReader();
+    reader.onload = function (e) {
+        selectedImgData = e.target.result;
+        preview.src = selectedImgData;
+        previewBox.classList.remove("hidden");
+    };
+    reader.readAsDataURL(file);
+});
+
+// Arrastrar la vista previa hacia una categoría
+document.getElementById("uploadPreview").addEventListener("dragstart", function (e) {
+    if (!selectedImgData) return;
+    e.dataTransfer.setData("text/plain", JSON.stringify({ img: selectedImgData }));
+});
+
+/* ---------- Drag & drop al armario ---------- */
+
+function setupClosetDragDrop() {
+    CATEGORIAS.forEach(category => {
+        const grid = document.getElementById(category);
+        if (!grid) return;
+
+        grid.addEventListener("dragover", function (e) {
+            e.preventDefault();
+            grid.classList.add("drag-over");
+        });
+
+        grid.addEventListener("dragleave", function () {
+            grid.classList.remove("drag-over");
+        });
+
+        grid.addEventListener("drop", function (e) {
+            e.preventDefault();
+            grid.classList.remove("drag-over");
+
+            const raw = e.dataTransfer.getData("text/plain");
+            if (!raw) return;
+
+            let data;
+            try {
+                data = JSON.parse(raw);
+            } catch (err) {
+                return;
+            }
+
+            if (!data.img) return;
+
+            // Si la prenda ya estaba en otra categoría, se mueve
+            if (data.source) {
+                if (data.source === category) return;
+                deleteClothing(data.source, data.img);
+            }
+
+            saveClothing(category, data.img);
+            createClothingItem(category, data.img);
+
+            // Si venía del selector de archivo, limpiar la vista previa
+            if (!data.source) {
+                selectedImgData = null;
+                document.getElementById("uploadPreviewBox").classList.add("hidden");
+                document.getElementById("upload").value = "";
+                document.getElementById("fileName").textContent = "Ningún archivo seleccionado";
+            }
+
+            refrescarOutfitsSiHayClima();
+        });
+    });
+}
+
+setupClosetDragDrop();
+
+/* ============================================================
+   GENERADOR DE OUTFITS
+   ============================================================ */
+
+function generateOutfits(temp, humidity, wind, sensacion) {
+    const remeras = armario["remeras"] || [];
+    const camperasAbrigo = armario["camperas-abrigo"] || [];
+    const camperasLivianas = armario["camperas-livianas"] || [];
+    const pantalones = armario["pantalones"] || [];
+    const bermudas = armario["bermudas"] || [];
+    const vestidos = armario["vestidos"] || [];
+    const polleras = armario["polleras"] || [];
+    const calzado = armario["calzado"] || [];
+
+    let tops = [...remeras];
+    let bottoms = [];
+    let camperas = [];
+    let camperaObligatoria = false;
+
+    /* ---------- Lógica climática ---------- */
+
+    if (sensacion <= 5) {
+        // Frío intenso: camperas de abrigo obligatorias + pantalones largos únicamente
+        camperas = [...camperasAbrigo];
+        camperaObligatoria = true;
+        bottoms = [...pantalones];
+
+    } else if (sensacion <= 14) {
+        // Frío moderado: camperas de abrigo + livianas, sin bermudas
+        camperas = [...camperasAbrigo, ...camperasLivianas];
+        camperaObligatoria = true;
+        bottoms = [...pantalones, ...polleras];
+
+    } else if (sensacion <= 22) {
+        // Templado: camperas livianas opcionales, sin bermudas
+        camperas = [...camperasLivianas];
+        bottoms = [...pantalones, ...polleras];
+
+    } else if (sensacion <= 27) {
+        // Calor moderado: remeras + polleras/pantalones/bermudas
+        bottoms = [...polleras, ...bermudas, ...pantalones];
+
+    } else {
+        // Calor intenso: remeras + bermudas y polleras prioritarias
+        bottoms = [...bermudas, ...polleras];
+    }
+
+    // Viento fuerte (> 25 km/h): sumar camperas livianas si no están ya
+    if (wind > 25 && sensacion > 14) {
+        camperasLivianas.forEach(c => { if (!camperas.includes(c)) camperas.push(c); });
+    }
+
+    // Viento muy fuerte (> 40 km/h): forzar camperas de abrigo incluso con calor moderado
+    if (wind > 40) {
+        camperaObligatoria = true;
+        camperasAbrigo.forEach(c => { if (!camperas.includes(c)) camperas.push(c); });
+    }
+
+    // Humedad alta (> 75%): quitar camperas de abrigo si hace calor (> 18°C)
+    if (humidity > 75 && sensacion > 18) {
+        camperas = camperas.filter(item => !camperasAbrigo.includes(item));
+    }
+
+    // Vestidos: solo con calor moderado o intenso
+    const usarVestidos = sensacion >= 22;
+
+    const hayCamperaDisponible = camperas.length > 0;
+
+    let jacketPool;
+    if (camperaObligatoria) {
+        jacketPool = hayCamperaDisponible ? camperas : [null];
+    } else {
+        jacketPool = hayCamperaDisponible ? [...camperas, null] : [null];
+    }
+
+    const shoesPool = calzado.length > 0 ? calzado : [null];
+
+    let combinaciones = [];
+
+    // Outfits normales (top + campera + bottom [+ calzado])
+    tops.forEach(top => {
+        bottoms.forEach(bottom => {
+            jacketPool.forEach(jacket => {
+                shoesPool.forEach(shoe => {
+                    combinaciones.push({ type: "normal", top, jacket, bottom, shoe });
+                });
+            });
+        });
+    });
+
+    // Outfits con vestido [+ calzado]
+    if (usarVestidos) {
+        vestidos.forEach(dress => {
+            shoesPool.forEach(shoe => {
+                combinaciones.push({ type: "dress", dress, shoe });
+            });
+        });
+    }
+
+    /* ---------- Recomendación de texto ---------- */
+
+    let recomendacion;
+
+    if (sensacion <= 5) {
+        recomendacion = "Frío intenso. Se recomiendan camperas de abrigo y pantalones largos.";
+    } else if (sensacion <= 14) {
+        recomendacion = "Hace frío. Llevá campera y pantalón largo.";
+    } else if (sensacion <= 22) {
+        recomendacion = "Clima templado. Una campera liviana puede ser útil.";
+    } else if (sensacion <= 27) {
+        recomendacion = "Calor moderado. Prendas frescas recomendadas.";
+    } else {
+        recomendacion = "Calor intenso. Bermudas y ropa bien liviana.";
+    }
+
+    if (wind > 40) recomendacion += " Viento muy fuerte — llevá abrigo aunque haga calor.";
+    else if (wind > 25) recomendacion += " Hay bastante viento.";
+
+    if (humidity > 75) recomendacion += " Humedad alta.";
+
+    if (camperaObligatoria && !hayCamperaDisponible) {
+        recomendacion += " No tenés ninguna campera cargada en tu armario — sumá una para abrigarte mejor.";
+    }
+
+    document.getElementById("recommendation").innerText = recomendacion;
+
+    /* ---------- Panel "Campera Recomendada" ---------- */
+
+    const jacketText = document.getElementById("jacketRecommendationText");
+    const jacketBox = document.getElementById("jacketOptions");
+
+    if (jacketText && jacketBox) {
+        jacketBox.innerHTML = "";
+
+        if (!camperaObligatoria && camperas.length === 0) {
+            jacketText.innerText = "No hace falta campera con este clima.";
+        } else if (!hayCamperaDisponible) {
+            jacketText.innerText = camperaObligatoria
+                ? "Este clima pide campera, pero no tenés ninguna cargada en tu armario."
+                : "Podrías sumar una campera liviana, pero no tenés ninguna cargada.";
+        } else {
+            jacketText.innerText = camperaObligatoria
+                ? "Elegí una campera para tu look de hoy:"
+                : "Campera opcional para hoy:";
+
+            camperas.forEach(jacketImg => {
+                const img = document.createElement("img");
+                img.src = jacketImg;
+                img.alt = "Campera";
+                img.onclick = () => setManiquiImg("manualJacket", jacketImg);
+                jacketBox.appendChild(img);
+            });
+        }
+    }
+
+    /* ---------- Validar combinaciones ---------- */
+
+    if (combinaciones.length === 0) {
+        document.getElementById("recommendation").innerText = "No hay prendas suficientes para este clima.";
+
+        for (let i = 1; i <= 3; i++) {
+            const box = document.getElementById("outfit" + i);
+            if (box) {
+                box.innerHTML = `
+                    <p style="color:#8fd3ff;text-align:center;padding:20px;font-size:13px;">
+                        Sin outfit disponible
+                    </p>
+                `;
+            }
+        }
+        return;
+    }
+
+    /* ---------- Mezclar y mostrar outfits ---------- */
+
+    combinaciones = combinaciones.sort(() => Math.random() - 0.5);
+
+    for (let i = 1; i <= 3; i++) {
+        const box = document.getElementById("outfit" + i);
+        if (!box) continue;
+        box.innerHTML = "";
+
+        const combo = combinaciones[i - 1];
+        if (!combo) continue;
+
+        if (combo.type === "dress") {
+            const dress = document.createElement("img");
+            dress.src = combo.dress;
+            dress.alt = "Vestido";
+            dress.onclick = () => {
+                setManiquiImg("manualDress", combo.dress);
+                setManiquiImg("manualTop", null);
+                setManiquiImg("manualBottom", null);
+            };
+            box.appendChild(dress);
+
+        } else {
+            if (combo.jacket) {
+                const jacket = document.createElement("img");
+                jacket.src = combo.jacket;
+                jacket.alt = "Campera";
+                jacket.onclick = () => {
+                    setManiquiImg("manualJacket", combo.jacket);
+                    setManiquiImg("manualDress", null);
+                };
+                box.appendChild(jacket);
+            }
+
+            if (combo.top) {
+                const top = document.createElement("img");
+                top.src = combo.top;
+                top.alt = "Parte superior";
+                top.onclick = () => {
+                    setManiquiImg("manualTop", combo.top);
+                    setManiquiImg("manualDress", null);
+                };
+                box.appendChild(top);
+            }
+
+            if (combo.bottom) {
+                const bottom = document.createElement("img");
+                bottom.src = combo.bottom;
+                bottom.alt = "Parte inferior";
+                bottom.onclick = () => {
+                    setManiquiImg("manualBottom", combo.bottom);
+                    setManiquiImg("manualDress", null);
+                };
+                box.appendChild(bottom);
+            }
+        }
+
+        if (combo.shoe) {
+            const shoe = document.createElement("img");
+            shoe.src = combo.shoe;
+            shoe.alt = "Calzado";
+            shoe.onclick = () => setManiquiImg("manualShoes", combo.shoe);
+            box.appendChild(shoe);
+        }
+    }
+}
+
+/* ============================================================
+   EXPONER FUNCIONES AL SCOPE GLOBAL
+   ============================================================
+   Como este archivo ahora es un módulo ES (type="module", para poder
+   hacer "import" de api.js), sus funciones ya NO quedan disponibles
+   automáticamente en window. Los onclick="..." del HTML sí las
+   necesitan ahí, así que se exponen explícitamente.
+*/
+
+window.showRegister = showRegister;
+window.showLogin = showLogin;
+window.showRecover = showRecover;
+window.togglePassword = togglePassword;
+window.startRecovery = startRecovery;
+window.verifyRecoveryAnswer = verifyRecoveryAnswer;
+window.recoverPassword = recoverPassword;
+window.register = register;
+window.login = login;
+window.guest = guest;
+window.logout = logout;
+window.getWeather = getWeather;
+window.saveCloset = saveCloset;
+window.clearCloset = clearCloset;
+window.clearManiqui = clearManiqui;
