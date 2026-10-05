@@ -1,5 +1,4 @@
-// api/register.js
-// POST { email, password, securityQuestion, securityAnswer } -> crea el usuario en Neon
+
 
 import bcrypt from 'bcryptjs';
 import { sql } from './_lib.js';
@@ -9,10 +8,10 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Método no permitido' });
     }
 
-    const { email, password, securityQuestion, securityAnswer } = req.body || {};
+    const { user, password, securityQuestion, securityAnswer } = req.body || {};
 
-    if (!email || !password) {
-        return res.status(400).json({ error: 'Email y contraseña son obligatorios' });
+    if (!user || !password) {
+        return res.status(400).json({ error: 'Usuario y contraseña son obligatorios' });
     }
 
     if (password.length < 6) {
@@ -23,12 +22,12 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'La pregunta de seguridad y su respuesta son obligatorias' });
     }
 
-    const emailNormalizado = String(email).trim().toLowerCase();
+    const userNormalizado = String(user).trim().toLowerCase();
     const respuestaNormalizada = String(securityAnswer).trim().toLowerCase();
 
     try {
         const existentes = await sql`
-            SELECT id FROM usuarios WHERE email = ${emailNormalizado}
+            SELECT id FROM usuarios WHERE user = ${userNormalizado}
         `;
 
         if (existentes.length > 0) {
@@ -39,8 +38,8 @@ export default async function handler(req, res) {
         const securityAnswerHash = await bcrypt.hash(respuestaNormalizada, 10);
 
         await sql`
-            INSERT INTO usuarios (email, password_hash, security_question, security_answer_hash, armario)
-            VALUES (${emailNormalizado}, ${passwordHash}, ${securityQuestion}, ${securityAnswerHash}, '{}'::jsonb)
+            INSERT INTO usuarios (user, password_hash, security_question, security_answer_hash, armario)
+            VALUES (${userNormalizado}, ${passwordHash}, ${securityQuestion}, ${securityAnswerHash}, '{}'::jsonb)
         `;
 
         return res.status(201).json({ message: 'Usuario creado correctamente' });

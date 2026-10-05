@@ -16,14 +16,12 @@ import {
 
 const apiKey = "bd568d71412c5915f72c032677b64d04";
 let ultimoClima = null;
-let currentUser = null;   // email/usuario del que inició sesión (o "Invitado")
-let currentToken = null;  // JWT devuelto por /api/login — null para el invitado
+let currentUser = null;   
+let currentToken = null; 
 let isGuest = false;
 let selectedImgData = null;
 
-// Armario en memoria: { categoria: [imgData, imgData, ...] }
-// Para usuarios registrados, se sincroniza con Neon (GET/POST /api/closet).
-// Para el invitado, vive solo durante la sesión y nunca se persiste.
+
 let armario = {};
 
 const CATEGORIAS = [
