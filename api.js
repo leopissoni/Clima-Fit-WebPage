@@ -40,11 +40,11 @@ async function parseRespuesta(response) {
 
 /* ---------- Registro ---------- */
 
-export async function registerUser(email, password, securityQuestion, securityAnswer) {
-    const response = await fetch("/api/register", {
+export async function registerUser(user, password, securityQuestion, securityAnswer) {
+    const response = await fetch("/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, securityQuestion, securityAnswer })
+        body: JSON.stringify({ user, password, securityQuestion, securityAnswer })
     });
 
     return parseRespuesta(response);
@@ -52,16 +52,16 @@ export async function registerUser(email, password, securityQuestion, securityAn
 
 /* ---------- Login ---------- */
 
-export async function loginUser(email, password) {
-    const response = await fetch("/api/login", {
+export async function loginUser(user, password) {
+    const response = await fetch("login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({ user, password })
     });
 
     const data = await parseRespuesta(response);
 
-    const sesion = { token: data.token, email: data.email };
+    const sesion = { token: data.token, user: data.user };
     guardarSesion(sesion);
 
     return sesion;
@@ -69,32 +69,32 @@ export async function loginUser(email, password) {
 
 /* ---------- Recuperar contraseña ---------- */
 
-export async function getSecurityQuestion(email) {
+export async function getSecurityQuestion(user) {
     const response = await fetch("/api/recover-question", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ user })
     });
 
     const data = await parseRespuesta(response);
     return data.question;
 }
 
-export async function verifySecurityAnswer(email, answer) {
+export async function verifySecurityAnswer(user, answer) {
     const response = await fetch("/api/recover-verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, answer })
+        body: JSON.stringify({ user, answer })
     });
 
     return parseRespuesta(response);
 }
 
-export async function resetPasswordWithAnswer(email, answer, newPassword) {
+export async function resetPasswordWithAnswer(user, answer, newPassword) {
     const response = await fetch("/api/recover-reset", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, answer, newPassword })
+        body: JSON.stringify({ user, answer, newPassword })
     });
 
     return parseRespuesta(response);

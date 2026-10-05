@@ -217,7 +217,7 @@ async function login() {
 
     try {
         const sesion = await loginUser(user, pass);
-        await enterApp(sesion.email, sesion.token);
+        await enterApp(sesion.user, sesion.token);
 
     } catch (error) {
         alert(error.message || "Usuario o contraseña incorrectos");
@@ -279,7 +279,7 @@ async function enterApp(user, token) {
 
     try {
         armario = await fetchCloset(sesion.token);
-        currentUser = sesion.email;
+        currentUser = sesion.user;
         currentToken = sesion.token;
         isGuest = false;
 

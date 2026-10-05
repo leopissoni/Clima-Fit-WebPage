@@ -1,6 +1,3 @@
-// api/_lib.js
-// Módulo interno compartido por los endpoints: conexión a Neon + JWT.
-// (No es un endpoint en sí mismo, por eso el guion bajo adelante.)
 
 import { neon } from '@neondatabase/serverless';
 import jwt from 'jsonwebtoken';

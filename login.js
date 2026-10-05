@@ -1,5 +1,4 @@
-// api/login.js
-// POST { email, password } -> devuelve { token, email } si es correcto
+
 
 import bcrypt from 'bcryptjs';
 import { sql, signToken } from './_lib.js';
@@ -9,17 +8,17 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Método no permitido' });
     }
 
-    const { email, password } = req.body || {};
+    const { user, password } = req.body || {};
 
-    if (!email || !password) {
+    if (!user || !password) {
         return res.status(400).json({ error: 'Email y contraseña son obligatorios' });
     }
 
-    const emailNormalizado = String(email).trim().toLowerCase();
+    const userNormalizado = String(user).trim().toLowerCase();
 
     try {
         const filas = await sql`
-            SELECT id, email, password_hash FROM usuarios WHERE email = ${emailNormalizado}
+            SELECT id, user, password_hash FROM usuarios WHERE user = ${userNormalizado}
         `;
 
         if (filas.length === 0) {
@@ -33,12 +32,12 @@ export default async function handler(req, res) {
             return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
         }
 
-        const token = signToken({ userId: usuario.id, email: usuario.email });
+        const token = signToken({ userId: usuario.id, user: usuario.user });
 
-        return res.status(200).json({ token, email: usuario.email });
+        return res.status(200).json({ token, user: usuario.user });
 
     } catch (error) {
-        console.error('Error en /api/login:', error);
+        console.error('Error en login:', error);
         return res.status(500).json({ error: 'Error del servidor' });
     }
 }

@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
     user TEXT UNIQUE NOT NULL,
-    password_ TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
     security_question TEXT NOT NULL,
     security_answer_hash TEXT NOT NULL,
     armario JSONB NOT NULL DEFAULT '{}'::jsonb,

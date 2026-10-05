@@ -1,5 +1,4 @@
-import { neon } from '@neondatabase/serverless';
-export const sql = neon(process.env.DATABASE_URL);
+
 
 import bcrypt from 'bcryptjs';
 import { sql } from './_lib.js';
@@ -50,4 +49,3 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Error del servidor' });
     }
 }
-
