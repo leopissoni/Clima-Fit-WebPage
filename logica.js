@@ -6,6 +6,7 @@ const apiKey = "bd568d71412c5915f72c032677b64d04";
 let ultimoClima = null;
 let currentUser = null;
 let selectedImgData = null;
+let sesionId = 0;
 
 const CATEGORIAS = [
     "remeras",
@@ -188,6 +189,7 @@ function logout() {
         CATEGORIAS.forEach(category => localStorage.removeItem(closetKey(category)));
     }
      resetearInterfaz();   // <-- NUEVO
+   sesionId++;
     currentUser = null;
 
     document.getElementById("app").classList.add("hidden");
@@ -208,6 +210,7 @@ function enterApp(user) {
     }
 
     resetearInterfaz();   // NUEVO
+   sesionId++;
 
     document.getElementById("welcomeUser").innerText = "Bienvenido, " + user;
     // ... resto igual ...
@@ -232,7 +235,7 @@ setInterval(updateClock, 1000);
 
 async function getWeather() {
     const city = document.getElementById("city").value.trim();
-
+const miSesion = sesionId;
     if (!city) {
         alert("Ingresá una ciudad");
         return;
@@ -259,6 +262,7 @@ async function getWeather() {
         }
 
         const data = await response.json();
+       if (miSesion !== sesionId) return; 
         const clima = data.list[0];
 
         const temp = clima.main.temp;
