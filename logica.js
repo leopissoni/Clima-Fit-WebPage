@@ -31,16 +31,28 @@ function resetearInterfaz() {
     // Maniquí
     clearManiqui();
 
-    // Outfits y recomendaciones generadas
-    ["outfit1", "outfit2", "outfit3", "jacketOptions", "weatherResult"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = "";
+    // Outfits (las 3 cajas) y campera recomendada
+    document.querySelectorAll(".outfit-box").forEach(box => {
+        box.innerHTML = "";
     });
 
-    ["recommendation", "jacketRecommendationText"].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.innerText = "";
-    });
+    const jacketOptions = document.getElementById("jacketOptions");
+    if (jacketOptions) jacketOptions.innerHTML = "";
+
+    const jacketText = document.getElementById("jacketRecommendationText");
+    if (jacketText) jacketText.innerText = "";
+
+    // Clima y recomendación
+    const weatherResult = document.getElementById("weatherResult");
+    if (weatherResult) weatherResult.innerHTML = "";
+
+    const recommendation = document.getElementById("recommendation");
+    if (recommendation) recommendation.innerText = "";
+
+    // NUEVO: ciudad escrita y fondo según el clima del usuario anterior
+    const city = document.getElementById("city");
+    if (city) city.value = "";
+    document.body.style.background = "";
 
     // Estado en memoria
     ultimoClima = null;
