@@ -181,47 +181,6 @@ function login() {
 function guest() {
     enterApp("Invitado");
 }
-function resetearInterfaz() {
-    // Maniquí
-    clearManiqui();
-
-    // Outfits (las 3 cajas) y campera recomendada
-    document.querySelectorAll(".outfit-box").forEach(box => {
-        box.innerHTML = "";
-    });
-
-    const jacketOptions = document.getElementById("jacketOptions");
-    if (jacketOptions) jacketOptions.innerHTML = "";
-
-    const jacketText = document.getElementById("jacketRecommendationText");
-    if (jacketText) jacketText.innerText = "";
-
-    // Clima y recomendación
-    const weatherResult = document.getElementById("weatherResult");
-    if (weatherResult) weatherResult.innerHTML = "";
-
-    const recommendation = document.getElementById("recommendation");
-    if (recommendation) recommendation.innerText = "";
-
-    // NUEVO: ciudad escrita y fondo según el clima del usuario anterior
-    const city = document.getElementById("city");
-    if (city) city.value = "";
-    document.body.style.background = "";
-
-    // Estado en memoria
-    ultimoClima = null;
-    selectedImgData = null;
-
-    // Vista previa de imagen subida
-    const previewBox = document.getElementById("uploadPreviewBox");
-    if (previewBox) previewBox.classList.add("hidden");
-
-    const upload = document.getElementById("upload");
-    if (upload) upload.value = "";
-
-    const fileName = document.getElementById("fileName");
-    if (fileName) fileName.textContent = "Ningún archivo seleccionado";
-}
 function logout() {
     // Al invitado no le persistimos el armario entre sesiones:
     // se borra su armario temporal al salir.
