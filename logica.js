@@ -25,7 +25,37 @@ const CATEGORIAS = [
 function closetKey(category) {
     return "closet_" + currentUser + "_" + category;
 }
+/* ---------- Reset de la interfaz al cambiar de usuario ---------- */
 
+function resetearInterfaz() {
+    // Maniquí
+    clearManiqui();
+
+    // Outfits y recomendaciones generadas
+    ["outfit1", "outfit2", "outfit3", "jacketOptions", "weatherResult"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = "";
+    });
+
+    ["recommendation", "jacketRecommendationText"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = "";
+    });
+
+    // Estado en memoria
+    ultimoClima = null;
+    selectedImgData = null;
+
+    // Vista previa de imagen subida
+    const previewBox = document.getElementById("uploadPreviewBox");
+    if (previewBox) previewBox.classList.add("hidden");
+
+    const upload = document.getElementById("upload");
+    if (upload) upload.value = "";
+
+    const fileName = document.getElementById("fileName");
+    if (fileName) fileName.textContent = "Ningún archivo seleccionado";
+}
 /* ============================================================
    LOGIN / REGISTRO
    ============================================================ */
@@ -112,6 +142,7 @@ function register() {
         alert("Completa todos los campos");
         return;
     }
+  
 
     if (localStorage.getItem("user_" + user) !== null) {
         alert("Ese nombre de usuario ya existe");
@@ -145,7 +176,7 @@ function logout() {
     if (currentUser === "Invitado") {
         CATEGORIAS.forEach(category => localStorage.removeItem(closetKey(category)));
     }
-
+     resetearInterfaz();   // <-- NUEVO
     currentUser = null;
 
     document.getElementById("app").classList.add("hidden");
@@ -160,12 +191,19 @@ function logout() {
 function enterApp(user) {
     currentUser = user;
 
+    // NUEVO: el invitado siempre empieza con el armario vacío
+    if (user === "Invitado") {
+        CATEGORIAS.forEach(category => localStorage.removeItem(closetKey(category)));
+    }
+
+    resetearInterfaz();   // NUEVO
+
     document.getElementById("welcomeUser").innerText = "Bienvenido, " + user;
-    document.getElementById("auth-screen").classList.add("hidden");
-    document.getElementById("app").classList.remove("hidden");
+    // ... resto igual ...
 
     loadCloset();
     updateClock();
+
 }
 
 /* ============================================================
