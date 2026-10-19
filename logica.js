@@ -36,6 +36,10 @@ function resetearInterfaz() {
     document.querySelectorAll(".outfit-box").forEach(box => {
         box.innerHTML = "";
     });
+    for (let i = 1; i <= 3; i++) {
+        const box = document.getElementById("outfit" + i);
+        if (box) box.innerHTML = "";
+    }
 
     const jacketOptions = document.getElementById("jacketOptions");
     if (jacketOptions) jacketOptions.innerHTML = "";
@@ -199,6 +203,7 @@ function logout() {
     document.getElementById("loginPass").value = "";
 
     showLogin();
+   location.reload();
 }
 
 function enterApp(user) {
