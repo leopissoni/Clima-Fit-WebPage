@@ -1,5 +1,4 @@
-// api/login.js
-// POST { email, password } -> devuelve { token, email } si es correcto
+
 
 import bcrypt from 'bcryptjs';
 import { sql, signToken } from './_lib.js';
