@@ -640,3 +640,15 @@ select option{
         width:100%;
     }
 }
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(5,8,13,.75);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    font-weight: 600;
+    z-index: 9999;
+}
