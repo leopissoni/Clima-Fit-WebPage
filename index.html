@@ -27,6 +27,9 @@
                 <button class="auth-btn" onclick="login()">Iniciar Sesión</button>
                 <button class="auth-btn" onclick="showRegister()">Crear Cuenta</button>
                 <button class="auth-btn" onclick="guest()">Entrar como Invitado</button>
+                <div class="forgot-pass-link" onclick="showRecovery()">
+    ¿Olvidaste tu contraseña?
+</div>
             </div>
 
             <div id="registerBox" class="hidden">
@@ -44,7 +47,35 @@
             </div>
         </div>
     </div>
+<!-- RECUPERAR CONTRASEÑA -->
+<div id="recoverBox" class="hidden">
+    <p class="recover-info">
+        Ingresá tu email y te generaremos un código para recuperar tu cuenta.
+    </p>
 
+    <input type="email" id="recoverUser" placeholder="Tu email" autocomplete="username">
+
+    <button onclick="requestRecovery()">Solicitar código</button>
+
+    <div id="recoverStep2" class="hidden" style="margin-top:15px;">
+        <input type="text" id="recoverCode" placeholder="Código de 6 dígitos"
+               inputmode="numeric" maxlength="6">
+
+        <div class="password-field">
+            <input type="password" id="recoverNewPass" placeholder="Nueva contraseña"
+                   autocomplete="new-password">
+            <button type="button" class="toggle-pass-btn"
+                    onclick="togglePassword('recoverNewPass', this)"
+                    aria-label="Mostrar contraseña">
+                <i class="fa-solid fa-eye"></i>
+            </button>
+        </div>
+
+        <button onclick="confirmRecovery()">Cambiar contraseña</button>
+    </div>
+
+    <button class="ghost" onclick="showLogin()">Volver al Login</button>
+</div>
     <!-- APP -->
     <div id="app" class="hidden">
 
