@@ -291,6 +291,10 @@ async function enterApp(user) {
     currentUser = user;
     resetearInterfaz();
     armario = {};
+   const overlay = document.createElement("div");
+overlay.className = "loading-overlay";
+overlay.textContent = "Cargando tu armario…";
+document.body.appendChild(overlay);
     const miSesion = ++sesionId;   
 
     document.getElementById("welcomeUser").innerText = "Bienvenido, " + user;
@@ -300,6 +304,7 @@ async function enterApp(user) {
     if (user === "Invitado") {
         CATEGORIAS.forEach(category => localStorage.removeItem(closetKey(category)));
         armario = {};
+
     } else {
         try {
             const sesion = getSesionGuardada();
@@ -319,6 +324,8 @@ async function enterApp(user) {
             alert("No se pudo cargar tu armario: " + err.message);
             armario = {};
         }
+
+       overlay.remove();
     }
 
     if (miSesion !== sesionId) return;
