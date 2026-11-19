@@ -287,11 +287,11 @@ if (recoverBox) recoverBox.classList.add("hidden");
 
     showLogin();
 }
-
 async function enterApp(user) {
     currentUser = user;
     resetearInterfaz();
-    sesionId++;
+    armario = {};
+    const miSesion = ++sesionId;   
 
     document.getElementById("welcomeUser").innerText = "Bienvenido, " + user;
     document.getElementById("app").classList.remove("hidden");
@@ -303,8 +303,14 @@ async function enterApp(user) {
     } else {
         try {
             const sesion = getSesionGuardada();
-            armario = await fetchCloset(sesion.token);
+            const data = await fetchCloset(sesion.token);
+
+            if (miSesion !== sesionId) return;
+
+            armario = data;
         } catch (err) {
+            if (miSesion !== sesionId) return;
+
             if (/No autenticado|Usuario no encontrado/i.test(err.message)) {
                 alert("Tu sesión ya no es válida. Volvé a iniciar sesión.");
                 logout();
@@ -314,6 +320,13 @@ async function enterApp(user) {
             armario = {};
         }
     }
+
+    if (miSesion !== sesionId) return;
+
+    loadCloset();
+    clearOutfitsUI();
+    updateClock();
+}
 
     loadCloset();
 
