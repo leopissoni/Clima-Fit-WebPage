@@ -1,5 +1,3 @@
--- Ejecutar esto una sola vez en el SQL Editor de Neon
--- (Neon Console -> tu proyecto -> "SQL Editor")
 
 CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
@@ -10,3 +8,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
 );
 
 CREATE INDEX IF NOT EXISTS idx_usuarios_email ON usuarios (email);
+
+-- Recuperación de contraseña
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_token TEXT;
+ALTER TABLE usuarios ADD COLUMN IF NOT EXISTS reset_token_expires TIMESTAMPTZ;
