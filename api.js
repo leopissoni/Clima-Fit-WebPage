@@ -1,11 +1,3 @@
-// api.js
-// Módulo del FRONTEND (va en la raíz del proyecto, junto a index.html y logica.js).
-// No confundir con la carpeta /api que contiene las funciones serverless
-// (login.js, register.js, closet.js, _lib.js).
-//
-// Se encarga de:
-//  - Guardar/leer la sesión (token + email) en localStorage
-//  - Llamar a los endpoints /api/login, /api/register y /api/closet
 
 const SESSION_KEY = "climafit_session";
 
@@ -35,8 +27,7 @@ async function parseRespuesta(response) {
     try {
         data = await response.json();
     } catch {
-        // El servidor no devolvió JSON (por ejemplo, un 404 de HTML plano
-        // porque /api/... no existe o no se está ejecutando con Vercel).
+ 
     }
 
     if (!response.ok) {
@@ -97,5 +88,27 @@ export async function saveClosetRemote(token, armario) {
         body: JSON.stringify({ armario })
     });
 
+    return parseRespuesta(response);
+}
+
+
+
+/* ---------- Recuperación de contraseña ---------- */
+
+export async function forgotPassword(email) {
+    const response = await fetch("/api/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email })
+    });
+    return parseRespuesta(response);
+}
+
+export async function resetPassword(email, code, newPassword) {
+    const response = await fetch("/api/reset-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code, newPassword })
+    });
     return parseRespuesta(response);
 }
