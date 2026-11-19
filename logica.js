@@ -8,7 +8,9 @@ import {
     registerUser,
     loginUser,
     fetchCloset,
-    saveClosetRemote
+    saveClosetRemote,
+    forgotPassword,
+    resetPassword
 } from "./api.js";
 
 const apiKey = "bd568d71412c5915f72c032677b64d04";
@@ -32,10 +34,7 @@ const CATEGORIAS = [
     "polleras"
 ];
 
-/* ---------- Acceso al armario ----------
-   - Invitado  -> localStorage (clave "closet_Invitado_<categoria>")
-   - Logueado  -> memoria (armario) + POST debounced al backend
-------------------------------------------- */
+/* ---------- Acceso al armario ----------*/
 
 function closetKey(category) {
     return "closet_" + currentUser + "_" + category;
@@ -121,11 +120,7 @@ function resetearInterfaz() {
     if (fileName) fileName.textContent = "Ningún archivo seleccionado";
 }
 
-/* ---------- Limpieza defensiva de outfits ----------
-   Asegura que ninguna caja de outfit, campera sugerida,
-   texto de recomendación ni capa del maniquí sobreviva
-   al cambio de usuario.
------------------------------------------------------- */
+/* ---------- Limpieza defensiva de outfits ---------- */
 
 function clearOutfitsUI() {
     [1, 2, 3].forEach(i => {
@@ -153,11 +148,13 @@ function clearOutfitsUI() {
 
 function showRegister() {
     document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("recoverBox").classList.add("hidden");
     document.getElementById("registerBox").classList.remove("hidden");
 }
 
 function showLogin() {
     document.getElementById("registerBox").classList.add("hidden");
+    document.getElementById("recoverBox").classList.add("hidden");
     document.getElementById("loginBox").classList.remove("hidden");
 }
 
@@ -200,6 +197,65 @@ async function login() {
         alert(err.message);
     }
 }
+/* ---------- Recuperación de contraseña ---------- */
+
+function showRecovery() {
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("registerBox").classList.add("hidden");
+    document.getElementById("recoverBox").classList.remove("hidden");
+    document.getElementById("recoverStep2").classList.add("hidden");
+    document.getElementById("recoverCode").value = "";
+    document.getElementById("recoverNewPass").value = "";
+}
+
+async function requestRecovery() {
+    const email = document.getElementById("recoverUser").value.trim();
+    if (!email) {
+        alert("Ingresá tu email");
+        return;
+    }
+
+    try {
+        const data = await forgotPassword(email);
+        document.getElementById("recoverStep2").classList.remove("hidden");
+
+        if (data.code) {
+            // MVP: mostramos el código en pantalla. En producción se envía por email.
+            alert(
+                `Código de recuperación (modo demostración): ${data.code}\n\n` +
+                `En producción este código se envía por email.`
+            );
+            document.getElementById("recoverCode").value = data.code;
+        } else {
+            alert("Si el email existe, te enviamos un código de recuperación.");
+        }
+    } catch (err) {
+        alert(err.message);
+    }
+}
+
+async function confirmRecovery() {
+    const email = document.getElementById("recoverUser").value.trim();
+    const code = document.getElementById("recoverCode").value.trim();
+    const newPass = document.getElementById("recoverNewPass").value;
+
+    if (!email || !code || !newPass) {
+        alert("Completá todos los campos");
+        return;
+    }
+    if (newPass.length < 6) {
+        alert("La contraseña debe tener al menos 6 caracteres");
+        return;
+    }
+
+    try {
+        await resetPassword(email, code, newPass);
+        alert("Contraseña actualizada. Ya podés iniciar sesión.");
+        showLogin();
+    } catch (err) {
+        alert(err.message);
+    }
+}
 
 function guest() {
     enterApp("Invitado");
@@ -208,6 +264,8 @@ function guest() {
 function logout() {
     if (currentUser === "Invitado") {
         CATEGORIAS.forEach(category => localStorage.removeItem(closetKey(category)));
+       const recoverBox = document.getElementById("recoverBox");
+if (recoverBox) recoverBox.classList.add("hidden");
     }
 
     logoutUser();
@@ -915,8 +973,6 @@ function generateOutfits(temp, humidity, wind, sensacion) {
 
 /* ============================================================
    EXPONER HANDLERS AL HTML
-   (obligatorio porque al ser "type=module" las funciones
-    dejan de ser globales y los onclick no las encontrarían)
    ============================================================ */
 
 Object.assign(window, {
@@ -931,6 +987,9 @@ Object.assign(window, {
     clearManiqui,
     saveCloset,
     clearCloset
+   showRecovery,
+requestRecovery,
+confirmRecovery
 });
 
 /* ============================================================
