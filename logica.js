@@ -121,6 +121,32 @@ function resetearInterfaz() {
     if (fileName) fileName.textContent = "Ningún archivo seleccionado";
 }
 
+/* ---------- Limpieza defensiva de outfits ----------
+   Asegura que ninguna caja de outfit, campera sugerida,
+   texto de recomendación ni capa del maniquí sobreviva
+   al cambio de usuario.
+------------------------------------------------------ */
+
+function clearOutfitsUI() {
+    [1, 2, 3].forEach(i => {
+        const box = document.getElementById("outfit" + i);
+        if (box) box.innerHTML = "";
+    });
+
+    const jacketBox = document.getElementById("jacketOptions");
+    if (jacketBox) jacketBox.innerHTML = "";
+
+    const jacketText = document.getElementById("jacketRecommendationText");
+    if (jacketText) jacketText.innerText = "";
+
+    const recommendation = document.getElementById("recommendation");
+    if (recommendation) recommendation.innerText = "";
+
+    clearManiqui();
+
+    ultimoClima = null;
+}
+
 /* ============================================================
    LOGIN / REGISTRO (contra el backend)
    ============================================================ */
@@ -180,7 +206,6 @@ function guest() {
 }
 
 function logout() {
-    // Al invitado no le persistimos el armario entre sesiones.
     if (currentUser === "Invitado") {
         CATEGORIAS.forEach(category => localStorage.removeItem(closetKey(category)));
     }
@@ -190,6 +215,8 @@ function logout() {
     saveTimer = null;
 
     resetearInterfaz();
+    clearOutfitsUI();
+
     sesionId++;
     currentUser = null;
     armario = {};
@@ -213,6 +240,7 @@ async function enterApp(user) {
     document.getElementById("auth-screen").classList.add("hidden");
 
     if (user === "Invitado") {
+        CATEGORIAS.forEach(category => localStorage.removeItem(closetKey(category)));
         armario = {};
     } else {
         try {
@@ -230,6 +258,10 @@ async function enterApp(user) {
     }
 
     loadCloset();
+
+    // Limpieza defensiva: pase lo que pase, sin outfits del usuario anterior
+    clearOutfitsUI();
+
     updateClock();
 }
 
